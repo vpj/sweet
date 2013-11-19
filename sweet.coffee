@@ -65,7 +65,7 @@ class Model extends Base
 #
 #Wraps around a dom element, to handle events, rendering, attributes, etc
 class View extends Base
- @delegateEventSplitter = /^(\S+)\s*(.*)$/
+ delegateEventSplitter: /^(\S+)\s*(.*)$/
 
  @initialize ->
   @_viewId = _.uniqueId 'view'
