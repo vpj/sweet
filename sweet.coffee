@@ -1,14 +1,16 @@
-delegateEventSplitter = /^(\S+)\s*(.*)$/
+#Sweet.Base
+#---------
+#
+# Introduces class level function initialize and include. This class is the base class of all other classes in Sweet.JS
 
-#Sweet.View
-#Represents an element in the UI.
-
-class BaseClass
+class Base
  constructor: ->
   @_init.apply @, arguments
 
  _initFuncs: []
-#Register initializer funcitons
+
+#Register initialize functions.
+#All initializer funcitons in subclasses  will be called with the constructor arguments.
  @initialize: (func) ->
   @::_initFuncs = _.clone @::_initFuncs
   @::_initFuncs.push func
@@ -17,13 +19,54 @@ class BaseClass
   for init in @_initFuncs
    init.apply @, arguments
 
-#Include objects
+#Include objects.
+#You can include objects by registering them with @include. This tries to solve the problem of single inheritence.
  @include: (obj) ->
   for k, v of obj when not @::[k]?
    @::[k] = v
 
 
-class View extends BaseClass
+#Sweet.Model
+#-----------
+#
+# Model lets you set default key value set, and it will extend the object parsed to it in the same structure as defaults
+class Model extends Base
+ _defaults: {}
+
+#Register default key value set.
+#Subclasses will include and can override default key-values of parent classes
+ @defaults: (defaults) ->
+  @::_defaults = _.clone @::_defaults
+  for k, v of defaults
+   @::_defaults[k] = v
+
+#Build a model with the structure of defaults.
+ @initialize (options) ->
+  @values = {}
+  for k, v of @_defaults
+   if options[k]?
+    @values[k] = options[k]
+   else
+    @values[k] = v
+
+#Returns key value set
+ toJSON: ->
+  return _.clone @values
+
+#Get value of a given key
+ get: (key) -> @values[key]
+
+#Set a key value combination
+ set: (key, value) -> @value[key] = value if @_defaults[key]?
+
+
+#Sweet.View
+#----------
+#
+#Wraps around a dom element, to handle events, rendering, attributes, etc
+class View extends Base
+ @delegateEventSplitter = /^(\S+)\s*(.*)$/
+
  @initialize ->
   @_viewId = _.uniqueId 'view'
   @_setupElement()
@@ -31,23 +74,33 @@ class View extends BaseClass
  _events: {}
  _attrs: {}
 
-# Register events
+#Register events
+#    "click .btn": "open"
+#This will call `@open` on `click` event occurs for `.btn`.
+#You can add or override events in subclasses.
  @events: (events) ->
   @::_events = _.clone @::_events
   for k, v of events
    @::_events[k] = v
 
 #Register attributes
+#This will set attributes of the com element
  @attributes: (attributes) ->
   @::_attrs = _.clone @::_attrs
   for k, v of attributes
    @::_attrs[k] = v
 
+#Tag of the dom element
  tagName: 'div'
+
+#Jquery selector on dom element
  $: (selector) -> @$el.find selector
 
+#Render
  render: -> null
 
+#Sets the dom element
+#You can specify a dom element using @el
  setElement: (element, delegate) ->
   @undelegateEvents() if @$el?
   @$el = $ element
@@ -55,11 +108,12 @@ class View extends BaseClass
 
   @delegateEvents() unless delegate is off
 
+#Setup events
  delegateEvents: ->
   @undelegateEvents()
 
   for key, method of @_events
-   [key, eventName, selector] = key.match delegateEventSplitter
+   [key, eventName, selector] = key.match @delegateEventSplitter
    method = _.bind this[method], this
    eventName += '.delegateEvents' + @_viewId
    if selector is ""
@@ -67,9 +121,11 @@ class View extends BaseClass
    else
     @$el.on eventName, selector, method
 
+#Remove events
  undelegateEvents: ->
   @$el.off '.delegateEvents' + @_viewId
 
+#Initilize dom element
  _setupElement: ->
   if not @el
    attrs = _.clone @_attrs
@@ -81,12 +137,16 @@ class View extends BaseClass
   else
    @setElement @el
 
-optionalParam = /\((.*?)\)/g
-namedParam    = /(\(\?)?:\w+/g
-splatParam    = /\*\w+/g
-escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#\s]/g
+#Sweet.Router
+#------------
+#
+#Routing with hash tags or pushState
+class Router extends Base
+ @optionalParam: /\((.*?)\)/g
+ @namedParam: /(\(\?)?:\w+/g
+ @splatParam: /\*\w+/g
+ @escapeRegExp: /[\-{}\[\]+?.,\\\^$|#\s]/g
 
-class Router extends BaseClass
  @initialize ->
   @_bindRoutes()
   @_event = null
@@ -94,11 +154,20 @@ class Router extends BaseClass
 
  _routes: {}
 
+#Register router
+#    analyse/:analysis': 'onAnalyse'
+#    dashboard': ['auth', 'dashboard']
+#This will match urls of the form analyse/* and call method @onAnalyse with the parameter.
+#Second route will first call @auth and and call @dashboard only if it returns true
+#The most specific route should be at bottom
+#Routers can added or overridden in subclasses
  @routes: (routes) ->
   @::_routes = _.clone @::_routes
   for k, v of routes
    @::_routes[k] = v
 
+#Starts routing
+#option silent will not trigger an event for the current url
  start: (options) ->
   Sweet.history.start options
   fragment = Sweet.history.getFragment()
@@ -106,22 +175,27 @@ class Router extends BaseClass
   if options?.silent is on
    @_history.push fragment: fragment, title: document.title
 
+#Goes to previous page if exists
  back: ->
   if @_history.length > 1
    Sweet.history.back()
 
+#Whether it is possible to go to previous page
  canBack: ->
   if @_history.length > 1 and Sweet.history.canBack()
    return true
   else
    return false
 
+#Registers a route
  route: (route, name) ->
   (route = @_routeToRegExp route) if not _.isRegExp route
 
+#Registers the route with Sweet.history
   Sweet.history.route route, (fragment, event) =>
    args = @_extractParameters route, fragment
    @_event = event
+#Handle state
    if @_event?.type is "popstate"
     @_history.pop()
     if @_history.length is 0
@@ -129,6 +203,7 @@ class Router extends BaseClass
    else
     @_history.push fragment: fragment, title: document.title, state: @getState()
 
+#Calls callbacks in order
    callbacks = name
    callbacks = [callbacks] if not Array.isArray callbacks
 
@@ -136,12 +211,14 @@ class Router extends BaseClass
     callback = @[callback]
     break unless callback.apply this, args
 
+#Gets the current HTML5 History state
  getState: ->
   if @_event?.originalEvent?.state?
    return @_event.originalEvent.state
   else
    return null
 
+#Navigate to a new URL, while setting HTML5 History state
  navigate: (fragment, options) ->
   options = {} unless options
   if options.replace
@@ -151,88 +228,74 @@ class Router extends BaseClass
 
   Sweet.history.navigate fragment, options
 
- #Most general at top
+#Bind routes
  _bindRoutes: ->
   for route, name of @_routes
    @route route, name
 
- # Convert a route string into a regular expression, suitable for matching
+#Convert a route string into a regular expression, suitable for matching
  _routeToRegExp: (route) ->
-  route = route.replace(escapeRegExp, '\\$&')
-               .replace(optionalParam, '(?:$1)?')
-               .replace(namedParam, (match, optional) ->
+  route = route.replace(@escapeRegExp, '\\$&')
+               .replace(@noptionalParam, '(?:$1)?')
+               .replace(@namedParam, (match, optional) ->
                  if optional then match else '([^\/]+)'
                )
-               .replace(splatParam, '(.*?)')
+               .replace(@splatParam, '(.*?)')
 
    return new RegExp "^#{route}$"
 
- # Given a route, and a URL fragment that it matches, return the array of
- # extracted decoded parameters. Empty or unmatched parameters will be
- # treated as `null` to normalize cross-browser behavior.
+#Extract parameters from a route regex and URL
  _extractParameters: (route, fragment) ->
   params = route.exec(fragment).slice(1)
   return _.map params, (param) ->
    if param then decodeURIComponent(param) else null
 
 
-# Handles cross-browser history management, based on either
-# [pushState](http://diveintohtml5.info/history.html) and real URLs, or
-# [onhashchange](https://developer.mozilla.org/en-US/docs/DOM/window.onhashchange)
-# and URL fragments. If the browser supports neither (old IE, natch),
-# falls back to polling.
+class History extends Base
+#Strip leading hash/slash and trailing space
+ @routeStripper = /^[#\/]|\s+$/g
+#Strip leading and trailing slashes
+ @rootStripper = /^\/+|\/+$/g
+#Remove trailing slash
+ @trailingSlash = /\/$/
+#Strip urls of hash and query
+ @pathStripper = /[?#].*$/
 
-# Cached regex for stripping a leading hash/slash and trailing space.
-routeStripper = /^[#\/]|\s+$/g
-
-#Cached regex for stripping leading and trailing slashes.
-rootStripper = /^\/+|\/+$/g
-
-#Cached regex for detecting MSIE.
-isExplorer = /msie [\w.]+/
-
-#Cached regex for removing a trailing slash.
-trailingSlash = /\/$/
-
-#Cached regex for stripping urls of hash and query.
-pathStripper = /[?#].*$/
-
-class History extends BaseClass
  @initialize ->
   @handlers = []
   _.bindAll this, 'checkUrl'
   @history = window.history
   @location = window.location
 
- interval: 50,
+#Hash check interval
+ interval: 50
 
- # Gets the true hash value. Cannot use location.hash directly due to bug
- # in Firefox where location.hash will always be decoded.
+#Get hash value
  getHash: ->
   match = @location.href.match /#(.*)$/
   return (if match? then match[1] else '')
 
- #Get the cross-browser normalized URL fragment, either from the URL,
- # the hash, or the override.
+#Get the URL fragment
  getFragment: (fragment, forcePushState) ->
   if not fragment?
    if @_hasPushState or not @_wantsHashChange or forcePushState
     fragment = @location.pathname
-    root = @root.replace trailingSlash, ''
+    root = @root.replace @trailingSlash, ''
     if not fragment.indexOf root
      fragment = fragment.slice root.length
    else
     fragment = @getHash()
 
-  return fragment.replace routeStripper, ''
+  return fragment.replace @routeStripper, ''
 
+#Goto the previous page
  back: ->
   @history?.back?()
 
+#Can back?
  canBack: -> @history?.back?
 
- #Start the hash change handling, returning `true` if the current URL matches
- #an existing route, and `false` otherwise.
+#Start listening to events
  start: (options) ->
   History.started = true
 
@@ -245,7 +308,7 @@ class History extends BaseClass
   @fragment = @getFragment()
 
   # Normalize root to always include a leading and trailing slash.
-  @root = "/#{@root}/".replace rootStripper, '/'
+  @root = "/#{@root}/".replace @rootStripper, '/'
 
   # Depending on whether we're using pushState or hashes, and whether
   # 'onhashchange' is supported, determine how we check the URL state.
@@ -259,21 +322,17 @@ class History extends BaseClass
   if not @options.silent
    @loadUrl null, null
 
- #Add a route to be tested when the fragment changes. Routes added later
- #may override previous routes.
+#Add a listener to a router
  route: (route, callback) ->
   @handlers.unshift route: route, callback: callback
 
- # Checks the current URL to see if it has changed, and if it has,
- # calls `loadUrl`
+#Check current url for changes
  checkUrl: (e) ->
   fragment = @getFragment()
   return if fragment is @fragment
   @loadUrl fragment, e
 
- #Attempt to load the current URL fragment. If a route succeeds with a
- # match, returns `true`. If no defined routes matches the fragment,
- # returns `false`.
+#Call callbacks of matching route
  loadUrl: (fragment, e) ->
   fragment = @fragment = @getFragment fragment
   return _.any this.handlers, (handler) ->
@@ -283,13 +342,10 @@ class History extends BaseClass
    else
     return false
 
- # Save a fragment into the hash history, or replace the URL state if the
- # 'replace' option is passed. You are responsible for properly URL-encoding
- # the fragment in advance.
- #
- # The options object can contain `trigger: true` if you wish to have the
- # route callback be fired (not usually desirable), or `replace: true`, if
- # you wish to modify the current URL without adding an entry to the history.
+#Navigate to a URL
+#Triggers a route is option trigger is on
+#Replaces the url is option replace is on
+#Sets state and title
  navigate: (fragment, options) ->
   return false if not History.started
 
@@ -297,7 +353,7 @@ class History extends BaseClass
   url = @root + fragment
 
   #Strip the fragment of the query and hash for matching.
-  fragment = fragment.replace pathStripper, ''
+  fragment = fragment.replace @pathStripper, ''
 
   return if @fragment is fragment
   @fragment = fragment
@@ -327,8 +383,7 @@ class History extends BaseClass
   if options.trigger
    return @loadUrl fragment, null
 
- #Update the hash location, either replacing the current entry, or adding
- # a new one to the browser history.
+#Update the hash
  _updateHash: (location, fragment, replace) ->
   if replace
    href = location.href.replace /(javascript:|#).*$/, ''
@@ -339,5 +394,7 @@ class History extends BaseClass
 window.Sweet = Sweet =
  View: View
  Router: Router
+ Model: Model
+ Base: Base
 
 Sweet.history = new History
