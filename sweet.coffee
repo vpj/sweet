@@ -107,21 +107,34 @@ class Router extends BaseClass
    @_history.push fragment: fragment, title: document.title
 
  back: ->
-  console.log @_history
+  if @_history.length > 1
+   Sweet.history.back()
+
+ canBack: ->
+  if @_history.length > 1 and Sweet.history.canBack()
+   return true
+  else
+   return false
 
  route: (route, name) ->
   (route = @_routeToRegExp route) if not _.isRegExp route
-  callback = @[name]
 
   Sweet.history.route route, (fragment, event) =>
    args = @_extractParameters route, fragment
    @_event = event
    if @_event?.type is "popstate"
     @_history.pop()
+    if @_history.length is 0
+     @_history.push fragment: fragment, title: document.title, state: @getState()
    else
     @_history.push fragment: fragment, title: document.title, state: @getState()
 
-   callback.apply this, args
+   callbacks = name
+   callbacks = [callbacks] if not Array.isArray callbacks
+
+   for callback in callbacks
+    callback = @[callback]
+    break unless callback.apply this, args
 
  getState: ->
   if @_event?.originalEvent?.state?
@@ -129,7 +142,6 @@ class Router extends BaseClass
   else
    return null
 
- # Simple proxy to `Backbone.history` to save a fragment into the history.
  navigate: (fragment, options) ->
   options = {} unless options
   if options.replace
@@ -214,6 +226,11 @@ class History extends BaseClass
 
   return fragment.replace routeStripper, ''
 
+ back: ->
+  @history?.back?()
+
+ canBack: -> @history?.back?
+
  #Start the hash change handling, returning `true` if the current URL matches
  #an existing route, and `false` otherwise.
  start: (options) ->
@@ -263,6 +280,8 @@ class History extends BaseClass
    if handler.route.test fragment
     handler.callback fragment, e
     return true
+   else
+    return false
 
  # Save a fragment into the hash history, or replace the URL state if the
  # 'replace' option is passed. You are responsible for properly URL-encoding
