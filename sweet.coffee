@@ -142,10 +142,10 @@ class View extends Base
 #
 #Routing with hash tags or pushState
 class Router extends Base
- @optionalParam: /\((.*?)\)/g
- @namedParam: /(\(\?)?:\w+/g
- @splatParam: /\*\w+/g
- @escapeRegExp: /[\-{}\[\]+?.,\\\^$|#\s]/g
+ optionalParam: /\((.*?)\)/g
+ namedParam: /(\(\?)?:\w+/g
+ splatParam: /\*\w+/g
+ escapeRegExp: /[\-{}\[\]+?.,\\\^$|#\s]/g
 
  @initialize ->
   @_bindRoutes()
@@ -253,13 +253,13 @@ class Router extends Base
 
 class History extends Base
 #Strip leading hash/slash and trailing space
- @routeStripper = /^[#\/]|\s+$/g
+ routeStripper: /^[#\/]|\s+$/g
 #Strip leading and trailing slashes
- @rootStripper = /^\/+|\/+$/g
+ rootStripper: /^\/+|\/+$/g
 #Remove trailing slash
- @trailingSlash = /\/$/
+ trailingSlash: /\/$/
 #Strip urls of hash and query
- @pathStripper = /[?#].*$/
+ pathStripper: /[?#].*$/
 
  @initialize ->
   @handlers = []
