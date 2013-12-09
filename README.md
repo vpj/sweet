@@ -1,12 +1,22 @@
-Sweet.JS
+SweetJS
 ========
 
-Sweet.JS is Inspired by Backbone, written in CoffeeScript, and much lighter.
+SweetJS is inspired by Backbone, written in CoffeeScript, and much lighter.
+It doesn't sync or handle events like Backbone.
+
 Sweet.Base introduces class level `include` to support multiple inheritence.
+Also you can subclass views and add new events and attributes from subclasses
+without overriding parent class events.
+
+Router suppoers `history.back()` and setting a state object. This lets you synchronize
+browser back button and web app back button - this is needed specially on mobile devices since
+browser toolbar dissapears.
+
+SweetJS requires jQuery and Underscore.
 
 Model
 -----
-Model is a simple class that would add default values to a key-value set. (similar to `$.extend`)
+Model is a simple class that would add default values to a key-value set.
 
 View
 ----
