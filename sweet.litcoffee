@@ -1,4 +1,6 @@
-#Sweet.Base
+#Sweet.js
+
+##Sweet.Base
 Introduces class level function initialize and include. This class is the base class of all other classes in Sweet.JS
 
     class Base
@@ -7,7 +9,7 @@ Introduces class level function initialize and include. This class is the base c
 
      _initFuncs: []
 
-###Register initialize functions.
+####Register initialize functions.
 All initializer funcitons in subclasses  will be called with the constructor arguments.
 
      @initialize: (func) ->
@@ -18,7 +20,7 @@ All initializer funcitons in subclasses  will be called with the constructor arg
       for init in @_initFuncs
        init.apply @, arguments
 
-###Include objects.
+####Include objects.
 You can include objects by registering them with @include. This tries to solve the problem of single inheritence.
 
      @include: (obj) ->
@@ -26,13 +28,13 @@ You can include objects by registering them with @include. This tries to solve t
        @::[k] = v
 
 
-#Sweet.Model
+##Sweet.Model
 Model lets you set default key value set, and it will extend the object parsed to it in the same structure as defaults
 
     class Model extends Base
      _defaults: {}
 
-###Register default key value set.
+####Register default key value set.
 Subclasses will include and can override default key-values of parent classes
 
      @defaults: (defaults) ->
@@ -50,21 +52,21 @@ Build a model with the structure of defaults.
        else
         @values[k] = v
 
-###Returns key value set
+####Returns key value set
 
      toJSON: ->
       return _.clone @values
 
-###Get value of a given key
+####Get value of a given key
 
      get: (key) -> @values[key]
 
-###Set a key value combination
+####Set a key value combination
 
      set: (key, value) -> @value[key] = value if @_defaults[key]?
 
 
-#Sweet.View
+##Sweet.View
 
 Wraps around a dom element, to handle events, rendering, attributes, etc
 
@@ -78,7 +80,7 @@ Wraps around a dom element, to handle events, rendering, attributes, etc
      _events: {}
      _attrs: {}
 
-###Register events
+####Register events
 
 `"click .btn": "open"`
 This will call `@open` on `click` event occurs for `.btn`.
@@ -89,7 +91,7 @@ You can add or override events in subclasses.
       for k, v of events
        @::_events[k] = v
 
-###Register attributes
+####Register attributes
 This will set attributes of the com element
 
      @attributes: (attributes) ->
@@ -97,19 +99,19 @@ This will set attributes of the com element
       for k, v of attributes
        @::_attrs[k] = v
 
-###Tag of the dom element
+####Tag of the dom element
 
      tagName: 'div'
 
-###Jquery selector on dom element
+####Jquery selector on dom element
 
      $: (selector) -> @$el.find selector
 
-###Render
+####Render
 
      render: -> null
 
-###Sets the dom element
+####Sets the dom element
 
 You can specify a dom element using @el
 
@@ -120,7 +122,7 @@ You can specify a dom element using @el
 
       @delegateEvents() unless delegate is off
 
-###Setup events
+####Setup events
 
      delegateEvents: ->
       @undelegateEvents()
@@ -134,12 +136,12 @@ You can specify a dom element using @el
        else
         @$el.on eventName, selector, method
 
-###Remove events
+####Remove events
 
      undelegateEvents: ->
       @$el.off '.delegateEvents' + @_viewId
 
-###Initilize dom element
+####Initilize dom element
 
      _setupElement: ->
       if not @el
@@ -152,7 +154,7 @@ You can specify a dom element using @el
       else
        @setElement @el
 
-#Sweet.Router
+##Sweet.Router
 
 Routing with hash tags or pushState
 
@@ -169,7 +171,7 @@ Routing with hash tags or pushState
 
      _routes: {}
 
-###Register router
+####Register router
 `'analyse/:analysis': 'onAnalyse'`
 `dashboard': ['auth', 'dashboard']`
 This will match urls of the form `analyse/\*` and call method @onAnalyse with the parameter.
@@ -182,7 +184,7 @@ Routers can added or overridden in subclasses
       for k, v of routes
        @::_routes[k] = v
 
-###Starts routing
+####Starts routing
 Option silent will not trigger an event for the current url
 
      start: (options) ->
@@ -192,13 +194,13 @@ Option silent will not trigger an event for the current url
       if options?.silent is on
        @_history.push fragment: fragment, title: document.title
 
-###Goes to previous page if exists
+####Goes to previous page if exists
 
      back: ->
       if @_history.length > 1
        Sweet.history.back()
 
-###Whether it is possible to go to previous page
+####Whether it is possible to go to previous page
 
      canBack: ->
       if @_history.length > 1 and Sweet.history.canBack()
@@ -206,7 +208,7 @@ Option silent will not trigger an event for the current url
       else
        return false
 
-###Registers a route
+####Registers a route
 
      route: (route, name) ->
       (route = @_routeToRegExp route) if not _.isRegExp route
@@ -235,7 +237,7 @@ Calls callbacks in order
         callback = @[callback]
         break unless callback.apply this, args
 
-###Gets the current HTML5 History state
+####Gets the current HTML5 History state
 
      getState: ->
       if @_event?.originalEvent?.state?
@@ -243,7 +245,7 @@ Calls callbacks in order
       else
        return null
 
-###Navigate to a new URL, while setting HTML5 History state
+####Navigate to a new URL, while setting HTML5 History state
 
      navigate: (fragment, options) ->
       options = {} unless options
@@ -328,16 +330,16 @@ Get the URL fragment
 
       return fragment.replace @routeStripper, ''
 
-#Goto the previous page
+####Goto the previous page
 
      back: ->
       @history?.back?()
 
-#Can back?
+####Can back?
 
      canBack: -> @history?.back?
 
-#Start listening to events
+####Start listening to events
 
      start: (options) ->
       History.started = true
@@ -367,7 +369,7 @@ Depending on whether we're using pushState or hashes, and whether
       if not @options.silent
        @loadUrl null, null
 
-###Add a listener to a router
+####Add a listener to a router
 
      route: (route, callback) ->
       @handlers.unshift route: route, callback: callback
@@ -390,7 +392,7 @@ Call callbacks of matching route
        else
         return false
 
-###Navigate to a URL
+####Navigate to a URL
 Triggers a route is option trigger is on
 Replaces the url is option replace is on
 Sets state and title
