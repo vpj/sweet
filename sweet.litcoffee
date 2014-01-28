@@ -448,7 +448,7 @@ Update the hash
       else
        location.hash = "##{fragment}"
 
-    window.Sweet = Sweet =
+    this.Sweet = Sweet =
      View: View
      Router: Router
      Model: Model
