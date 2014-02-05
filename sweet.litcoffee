@@ -265,12 +265,11 @@ Bind routes
 Convert a route string into a regular expression, suitable for matching
 
      _routeToRegExp: (route) ->
-      route = route.replace(@escapeRegExp, '\\$&')
-                   .replace(@noptionalParam, '(?:$1)?')
-                   .replace(@namedParam, (match, optional) ->
+      route = route.replace @escapeRegExp, '\\$&'
+                   .replace @noptionalParam, '(?:$1)?'
+                   .replace @namedParam, (match, optional) ->
                      if optional then match else '([^\/]+)'
-                   )
-                   .replace(@splatParam, '(.*?)')
+                   .replace @splatParam, '(.*?)'
 
        return new RegExp "^#{route}$"
 
