@@ -281,6 +281,7 @@ Extract parameters from a route regex and URL
       return _.map params, (param) ->
        if param then decodeURIComponent(param) else null
 
+## History class
 
     class History extends Base
 
@@ -305,6 +306,7 @@ Strip urls of hash and query
       _.bindAll this, 'checkUrl'
       @history = window.history
       @location = window.location
+      @stateList = []
 
 Hash check interval
 
@@ -316,14 +318,32 @@ Get hash value
       match = @location.href.match /#(.*)$/
       return (if match? then match[1] else '')
 
+Get emulated state
+
+     getEmulateState: ->
+      if @stateList.length > 0
+       return @stateList[@stateList.length - 1]
+      else
+       return {fragment: ""}
+
+     popEmulateState: -> @stateList.pop()
+
+     pushEmulateState: (state, title, fragment) ->
+      @stateList.push
+       state: state
+       title: title
+       fragment: fragment
+
 Get the URL fragment
 
      getFragment: (fragment, forcePushState) ->
       if not fragment?
-       if @_hasPushState or not @_wantsHashChange or forcePushState
+       if @_emulateState
+        fragment = @getEmulateState().fragment
+       else if @_hasPushState or not @_wantsHashChange or forcePushState
         fragment = @location.pathname
         root = @root.replace @trailingSlash, ''
-        if not fragment.indexOf root
+        if (fragment.indexOf root) is 0
          fragment = fragment.slice root.length
        else
         fragment = @getHash()
@@ -333,11 +353,19 @@ Get the URL fragment
 ####Goto the previous page
 
      back: ->
-      @history?.back?()
+      if @_emulateState is on
+       @popEmulateState()
+       @loadUrl null, null
+      else
+       @history?.back?()
 
 ####Can back?
 
-     canBack: -> @history?.back?
+     canBack: ->
+      if @_emulateState is on
+       return @stateList.length > 1
+      else
+       return @history?.back?
 
 ####Start listening to events
 
@@ -346,9 +374,12 @@ Get the URL fragment
 
       @options = _.extend {root: '/'}, @options, options
       @root = @options.root
-      @_wantsHashChange = @options.hashChange isnt off
-      @_wantsPushState = @options.pushState is on
-      @_hasPushState = @options.pushState is on and @history?.pushState?
+      @_emulateState = @options.emulateState is on
+      @_wantsHashChange = @_emulateState is off and @options.hashChange isnt off
+      @_wantsPushState = @_emulateState is off and @options.pushState is on
+      @_hasPushState = @_wantsPushState is on and @history?.pushState?
+      if @_emulateState and @options.start?
+       @pushEmulateState @options.start.state, @options.start.title, @options.start.fragment
 
       @fragment = @getFragment()
 
@@ -417,7 +448,15 @@ Don't include a trailing slash on the root.
 
 If pushState is available, we use it to set the fragment as a real URL.
 
-      if @_hasPushState
+      if @_emulateState
+       if options.replace is on
+        @popEmulateState()
+       state = {}
+       state = options.state if options.state?
+       title = ''
+       title = options.title if options.title?
+       @pushEmulateState state, title, fragment
+      else if @_hasPushState
        method = if options.replace then 'replaceState' else 'pushState'
        state = {}
        state = options.state if options.state?
@@ -448,7 +487,7 @@ Update the hash
       else
        location.hash = "##{fragment}"
 
-    this.Sweet = Sweet =
+    window.Sweet = Sweet =
      View: View
      Router: Router
      Model: Model
